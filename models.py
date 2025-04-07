@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Float, DateTime, Index
-from .database import Base
+from database import Base
 
 class Expense(Base):
     __tablename__ = "expenses"
