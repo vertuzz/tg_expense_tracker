@@ -6,16 +6,18 @@ A simple Telegram bot to track personal expenses using LLM parsing.
 
 - Add expenses via text messages, parsed with an LLM (OpenRouter API).
 - **Supports parsing multiple expenses from a single message.** The bot uses an LLM to extract multiple expenses from one text input, returning a list of expenses with amount, category (mapped to predefined categories), optional description, and optional date.
+- **DRY implementation:** The LLM parser follows the Don't Repeat Yourself principle with shared helper functions for common operations like API requests, response parsing, and expense validation.
 - Modular, clean architecture following SOLID principles.
 
 ## Project Structure
 
 ```
-bot.py               # Main entry point: initializes and runs the bot
-config.py            # Loads configuration from environment variables
-config.py.example    # Example config file
-handlers.py          # Telegram command and message handlers
-llm_parser.py        # LLM API interaction logic
+src/
+  bot.py               # Main entry point: initializes and runs the bot
+  config.py            # Loads configuration from environment variables
+  handlers.py          # Telegram command and message handlers
+  llm_parser.py        # LLM API interaction logic (text and image parsing)
+  sheets_writer.py     # Google Sheets integration
 requirements.txt     # Python dependencies
 README.md            # Project documentation
 ```
@@ -58,12 +60,15 @@ The required libraries for Google Sheets integration (`gspread`, `google-auth`, 
 
 2. Set environment variables or configure `config.py`.
 
-3. Run the bot:
+3. Run the bot (from project root directory):
 
 ```
-python bot.py
+python -m src.bot
 ```
+
+Note: The project uses Python package structure, so make sure to run from the project root directory (where this README is located).
 
 ## Notes
 
 - Expenses are now automatically organized into monthly sheets (MM-YYYY format) in Google Sheets.
+- The LLM parser has been refactored to reduce code duplication and improve maintainability.

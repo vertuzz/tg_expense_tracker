@@ -5,7 +5,7 @@ import gspread
 from google.oauth2 import service_account
 from gspread.exceptions import SpreadsheetNotFound, WorksheetNotFound, APIError
 
-from config import GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
+from .config import GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
 
 # Set up logging
 logger = logging.getLogger(__name__)

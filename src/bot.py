@@ -1,8 +1,8 @@
 import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-import config
-from handlers import start, handle_message, error_handler
+from . import config
+from .handlers import start, handle_message, error_handler
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
