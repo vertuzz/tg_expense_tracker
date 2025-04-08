@@ -19,6 +19,11 @@ LLM_MODEL = os.getenv("LLM_MODEL", "meta-llama/llama-4-maverick:free")
 YOUR_SITE_URL = os.getenv("YOUR_SITE_URL", "http://localhost")
 YOUR_SITE_NAME = os.getenv("YOUR_SITE_NAME", "TelegramExpenseBot")
 
+# Google Sheets Configuration
+GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "YOUR_GOOGLE_SHEET_ID")  # The ID of your Google Sheet
+GOOGLE_SHEET_NAME = os.getenv("GOOGLE_SHEET_NAME", "Expenses")  # The name of the sheet (tab) within the spreadsheet
+GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH = os.getenv("GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH", "creds.json")  # Path to your service account JSON key file
+
 # Expense Categories
 EXPENSE_CATEGORIES = [
     "Food",

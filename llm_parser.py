@@ -4,11 +4,10 @@ import httpx
 import logging
 
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, LLM_MODEL, YOUR_SITE_URL, YOUR_SITE_NAME, EXPENSE_CATEGORIES
-from models import Expense
 
 logger = logging.getLogger(__name__)
 
-async def parse_expense_data(text: str, user_id: int) -> list[Expense]:
+async def parse_expense_data(text: str, user_id: int) -> list[dict]:
     """Parses potentially multiple expenses from text using an LLM. Returns a list of Expense objects."""
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY":
         logger.error("OpenRouter API Key not configured.")
@@ -116,19 +115,19 @@ async def parse_expense_data(text: str, user_id: int) -> list[Expense]:
             except (ValueError, TypeError):
                 pass  # fallback to now
 
-        expense_obj = Expense(
-            user_id=user_id,
-            amount=amount,
-            category=category,
-            description=str(description).strip() if description else None,
-            timestamp=timestamp
-        )
-        expenses.append(expense_obj)
+        expense_dict = {
+            "user_id": user_id,
+            "amount": amount,
+            "category": category,
+            "description": str(description).strip() if description else None,
+            "timestamp": timestamp
+        }
+        expenses.append(expense_dict)
 
     logger.info(f"LLM parsed {len(expenses)} expenses from input.")
     return expenses
 
-async def parse_expense_image_data(image_bytes: bytearray, user_id: int) -> list[Expense]:
+async def parse_expense_image_data(image_bytes: bytearray, user_id: int) -> list[dict]:
     """Parses potentially multiple expenses from an image using an LLM. Returns a list of Expense objects."""
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY":
         logger.error("OpenRouter API Key not configured.")
@@ -242,14 +241,14 @@ async def parse_expense_image_data(image_bytes: bytearray, user_id: int) -> list
             except (ValueError, TypeError):
                 pass
 
-        expense_obj = Expense(
-            user_id=user_id,
-            amount=amount,
-            category=category,
-            description=str(description).strip() if description else None,
-            timestamp=timestamp
-        )
-        expenses.append(expense_obj)
+        expense_dict = {
+            "user_id": user_id,
+            "amount": amount,
+            "category": category,
+            "description": str(description).strip() if description else None,
+            "timestamp": timestamp
+        }
+        expenses.append(expense_dict)
 
     logger.info(f"LLM parsed {len(expenses)} expenses from image for user {user_id}.")
     return expenses

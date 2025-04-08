@@ -2,7 +2,6 @@ import logging
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 import config
-import database
 from handlers import start, handle_message, error_handler
 
 logging.basicConfig(
@@ -18,7 +17,6 @@ def main():
         return
 
     # Initialize database
-    database.init_db()
 
     # Create the Telegram application
     application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()

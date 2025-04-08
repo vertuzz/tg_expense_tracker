@@ -1,9 +1,8 @@
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes
-
-from database import SessionLocal
-from crud import save_expense
+from llm_parser import parse_expense_data, parse_expense_image_data
+from sheets_writer import write_expenses_to_sheet
 from llm_parser import parse_expense_data, parse_expense_image_data
 
 logger = logging.getLogger(__name__)
@@ -23,22 +22,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         expenses = await parse_expense_data(message.text, user.id)
 
         if expenses:
-            saved_expenses = []
-            with SessionLocal() as db:
-                for expense in expenses:
-                    saved = save_expense(db, expense)
-                    if saved:
-                        saved_expenses.append(saved)
-            if saved_expenses:
+            # Convert expenses to dicts if needed
+            expense_dicts = [e if isinstance(e, dict) else e.__dict__ for e in expenses]
+            success = write_expenses_to_sheet(expense_dicts)
+            if success:
                 details = "\n".join(
-                    f"• {e.amount:.2f} in '{e.category}'" + (f" ({e.description})" if e.description else "")
-                    for e in saved_expenses
+                    f"• {e['amount']:.2f} in '{e['category']}'" + (f" ({e['description']})" if e.get('description') else "")
+                    for e in expense_dicts
                 )
                 await message.reply_text(
-                    f"✅ Added {len(saved_expenses)} expense(s):\n{details}"
+                    f"✅ Added {len(expense_dicts)} expense(s) to Google Sheet:\n{details}"
                 )
             else:
-                await message.reply_text("❌ Database error: Could not save expenses.")
+                await message.reply_text("❌ Error: Could not save expenses to Google Sheet. Please check configuration and sheet access.")
         else:
             await message.reply_text(
                 "❌ Error: Could not understand expense details from your message."
@@ -56,14 +52,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             expenses = await parse_expense_image_data(image_bytes=image_bytes, user_id=user.id)
 
             if expenses:
-                db = SessionLocal()
-                saved_count = 0
-                for expense in expenses:
-                    saved = save_expense(db, expense)
-                    if saved:
-                        saved_count += 1
-                db.close()
-                await message.reply_text(f"🤖 Parsed and saved {saved_count} expenses from the image.")
+                expense_dicts = [e if isinstance(e, dict) else e.__dict__ for e in expenses]
+                success = write_expenses_to_sheet(expense_dicts)
+                if success:
+                    await message.reply_text(f"✅ Added {len(expense_dicts)} expense(s) from the image to Google Sheet.")
+                else:
+                    await message.reply_text("❌ Error: Could not save expenses to Google Sheet. Please check configuration and sheet access.")
             else:
                 await message.reply_text("❌ Error: Could not extract expenses from the image. Please ensure it's clear.")
         except Exception as e:
