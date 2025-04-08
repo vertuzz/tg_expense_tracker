@@ -55,7 +55,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 expense_dicts = [e if isinstance(e, dict) else e.__dict__ for e in expenses]
                 success = write_expenses_to_sheet(expense_dicts)
                 if success:
-                    await message.reply_text(f"✅ Added {len(expense_dicts)} expense(s) from the image to Google Sheet.")
+                    details = "\n".join(
+                        f"• {e['amount']:.2f} in '{e['category']}'" + (f" ({e['description']})" if e.get('description') else "")
+                        for e in expense_dicts
+                    )
+                    await message.reply_text(
+                        f"✅ Added {len(expense_dicts)} expense(s) from the image to Google Sheet:\n{details}"
+                    )
                 else:
                     await message.reply_text("❌ Error: Could not save expenses to Google Sheet. Please check configuration and sheet access.")
             else:

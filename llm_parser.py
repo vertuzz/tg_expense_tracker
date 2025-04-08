@@ -93,7 +93,7 @@ async def parse_expense_data(text: str, user_id: int) -> list[dict]:
 
         # Validate amount
         try:
-            amount = float(amount)
+            amount = abs(float(amount))
         except (ValueError, TypeError):
             logger.warning(f"Skipping expense with invalid amount: {item}")
             continue
@@ -223,7 +223,7 @@ async def parse_expense_image_data(image_bytes: bytearray, user_id: int) -> list
         date_str = item.get("date")
 
         try:
-            amount = float(amount)
+            amount = abs(float(amount))
         except (ValueError, TypeError):
             logger.warning(f"Skipping expense with invalid amount: {item}")
             continue
