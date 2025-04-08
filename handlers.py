@@ -4,13 +4,13 @@ from telegram.ext import ContextTypes
 
 from database import SessionLocal
 from crud import save_expense
-from llm_parser import parse_expense_data, parse_income_data
+from llm_parser import parse_expense_data, parse_expense_image_data
 
 logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends explanation on how to use the bot."""
-    await update.message.reply_text('Hello! Send me your expense details or income photos.')
+    await update.message.reply_text('Hello! Send me your expense details or photos of receipts.')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handles incoming text or photo messages."""
@@ -20,18 +20,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if message.text:
         logger.info(f"Text message from {user.id}: {message.text}")
-        expense_obj = await parse_expense_data(message.text, user.id)
+        expenses = await parse_expense_data(message.text, user.id)
 
-        if expense_obj:
+        if expenses:
+            saved_expenses = []
             with SessionLocal() as db:
-                saved = save_expense(db, expense_obj)
-                if saved:
-                    await message.reply_text(
-                        f"✅ Expense saved: {saved.amount:.2f} in '{saved.category}'"
-                        f"{f' ({saved.description})' if saved.description else ''}"
-                    )
-                else:
-                    await message.reply_text("❌ Database error: Could not save expense.")
+                for expense in expenses:
+                    saved = save_expense(db, expense)
+                    if saved:
+                        saved_expenses.append(saved)
+            if saved_expenses:
+                details = "\n".join(
+                    f"• {e.amount:.2f} in '{e.category}'" + (f" ({e.description})" if e.description else "")
+                    for e in saved_expenses
+                )
+                await message.reply_text(
+                    f"✅ Added {len(saved_expenses)} expense(s):\n{details}"
+                )
+            else:
+                await message.reply_text("❌ Database error: Could not save expenses.")
         else:
             await message.reply_text(
                 "❌ Error: Could not understand expense details from your message."
@@ -39,22 +46,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     elif message.photo:
         logger.info(f"Received photo message from {user.id}")
-        await message.reply_text("⏳ Analyzing image for income details...")
+        await message.reply_text("⏳ Analyzing image for expenses...")
 
         photo = message.photo[-1]
         try:
             file = await context.bot.get_file(photo.file_id)
             image_bytes = await file.download_as_bytearray()
 
-            income_data = await parse_income_data(image_bytes=image_bytes, user_id=user.id)
+            expenses = await parse_expense_image_data(image_bytes=image_bytes, user_id=user.id)
 
-            if income_data:
-                # TODO: Implement saving income data to database in a future step
-                await message.reply_text(
-                    f"🤖 Parsed Income: {income_data['amount']:.2f} from '{income_data['source']}'.\n(Note: Income saving not implemented yet)"
-                )
+            if expenses:
+                db = SessionLocal()
+                saved_count = 0
+                for expense in expenses:
+                    saved = save_expense(db, expense)
+                    if saved:
+                        saved_count += 1
+                db.close()
+                await message.reply_text(f"🤖 Parsed and saved {saved_count} expenses from the image.")
             else:
-                await message.reply_text("❌ Error: Could not extract income details from the image. Please ensure it's clear.")
+                await message.reply_text("❌ Error: Could not extract expenses from the image. Please ensure it's clear.")
         except Exception as e:
             logger.error(f"Error processing photo message: {e}", exc_info=True)
             await message.reply_text("❌ An error occurred while processing the image.")

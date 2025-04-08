@@ -18,3 +18,17 @@ LLM_MODEL = os.getenv("LLM_MODEL", "meta-llama/llama-4-maverick:free")
 # Site URL and Name for OpenRouter headers
 YOUR_SITE_URL = os.getenv("YOUR_SITE_URL", "http://localhost")
 YOUR_SITE_NAME = os.getenv("YOUR_SITE_NAME", "TelegramExpenseBot")
+
+# Expense Categories
+EXPENSE_CATEGORIES = [
+    "Food",
+    "Transport",
+    "Utilities",
+    "Entertainment",
+    "Shopping",
+    "Health",
+    "Groceries",
+    "Rent/Mortgage",
+    "Subscriptions",
+    "Other"
+]

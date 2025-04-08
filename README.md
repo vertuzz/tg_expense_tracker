@@ -5,7 +5,7 @@ A simple Telegram bot to track personal expenses using SQLite, SQLAlchemy, and L
 ## Features
 
 - Add expenses via text messages, parsed with an LLM (OpenRouter API).
-- Parse income details from photos (parsing implemented, saving income TBD).
+- **Supports parsing multiple expenses from a single message.** The bot uses an LLM to extract multiple expenses from one text input, returning a list of expenses with amount, category (mapped to predefined categories), optional description, and optional date.
 - Stores data in SQLite via SQLAlchemy ORM.
 - Modular, clean architecture following SOLID principles.
 
@@ -77,4 +77,3 @@ python bot.py
 
 - The database uses SQLite (`expenses.db`).
 - Designed for easy extension with more models (e.g., Income).
-- Income saving is not yet implemented.

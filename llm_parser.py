@@ -3,24 +3,28 @@ import base64
 import httpx
 import logging
 
-from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, LLM_MODEL, YOUR_SITE_URL, YOUR_SITE_NAME
+from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, LLM_MODEL, YOUR_SITE_URL, YOUR_SITE_NAME, EXPENSE_CATEGORIES
 from models import Expense
 
 logger = logging.getLogger(__name__)
 
-async def parse_expense_data(text: str, user_id: int) -> Expense | None:
-    """Parses expense data from text using an LLM."""
+async def parse_expense_data(text: str, user_id: int) -> list[Expense]:
+    """Parses potentially multiple expenses from text using an LLM. Returns a list of Expense objects."""
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY":
         logger.error("OpenRouter API Key not configured.")
         return None
 
     prompt = f"""
-    Analyze the following text which represents an expense entry. Extract the numerical amount, a single category word, and an optional brief description.
-    Return the result ONLY as a JSON object with the keys "amount", "category", and "description".
-    - "amount" should be a number (float or integer).
-    - "category" should be a single, relevant noun or short phrase (e.g., 'food', 'transport', 'groceries', 'utility-bill').
-    - "description" should be a string containing any extra details, or null if no description is provided.
-    - If you cannot reliably extract these details, return a JSON object with null values, like {{"amount": null, "category": null, "description": null}}.
+    Analyze the following text which may contain multiple expense entries. Extract each expense with the following details:
+    - "amount": number (float or integer)
+    - "category": a relevant category word or phrase
+    - "description": optional brief description or null
+    - "date": optional date string in ISO format (YYYY-MM-DD), or null if not specified
+
+    Return ONLY a JSON array of objects, each with keys: "amount", "category", "description", "date".
+    Valid categories include: {', '.join(EXPENSE_CATEGORIES)}.
+    If the category is not recognized, use "Other".
+    If you cannot extract any expenses, return an empty JSON array [].
 
     Text to analyze: "{text}"
 
@@ -62,7 +66,7 @@ async def parse_expense_data(text: str, user_id: int) -> Expense | None:
 
     if not llm_response_content:
         logger.error(f"LLM returned empty content for text: '{text}'")
-        return None
+        return []
 
     try:
         # Clean potential markdown code blocks
@@ -75,49 +79,76 @@ async def parse_expense_data(text: str, user_id: int) -> Expense | None:
         parsed_json = json.loads(content)
     except json.JSONDecodeError:
         logger.error(f"Failed to decode JSON from LLM response: {llm_response_content}")
-        return None
+        return []
 
-    amount = parsed_json.get("amount")
-    category = parsed_json.get("category")
-    description = parsed_json.get("description")
+    if not isinstance(parsed_json, list):
+        logger.warning(f"Expected a list of expenses but got: {parsed_json}")
+        return []
 
-    # Validation
-    if amount is None or category is None:
-        logger.warning(f"LLM parsing incomplete for '{text}'. Response: {parsed_json}")
-        return None
-    try:
-        amount = float(amount)
-    except (ValueError, TypeError):
-        logger.warning(f"Invalid amount '{amount}' in LLM response: {parsed_json}")
-        return None
-    if not isinstance(category, str) or not category.strip():
-        logger.warning(f"Invalid category '{category}' in LLM response: {parsed_json}")
-        return None
+    expenses = []
+    for item in parsed_json:
+        amount = item.get("amount")
+        category = item.get("category")
+        description = item.get("description")
+        date_str = item.get("date")
 
-    logger.info(f"LLM parsed expense: Amount={amount}, Category='{category}', Desc='{description}'")
-    return Expense(
-        user_id=user_id,
-        amount=amount,
-        category=category.lower().strip(),
-        description=str(description).strip() if description else None
-    )
+        # Validate amount
+        try:
+            amount = float(amount)
+        except (ValueError, TypeError):
+            logger.warning(f"Skipping expense with invalid amount: {item}")
+            continue
 
-async def parse_income_data(image_bytes: bytearray, user_id: int) -> dict | None:
-    """Parses income data from an image using an LLM."""
+        # Validate category
+        if not isinstance(category, str) or not category.strip():
+            category = "Other"
+        else:
+            # Map to known categories (case-insensitive)
+            matched = next((c for c in EXPENSE_CATEGORIES if c.lower() == category.lower().strip()), None)
+            category = matched if matched else "Other"
+
+        # Parse date if provided
+        import datetime
+        timestamp = datetime.datetime.utcnow()
+        if date_str:
+            try:
+                timestamp = datetime.datetime.fromisoformat(date_str)
+            except (ValueError, TypeError):
+                pass  # fallback to now
+
+        expense_obj = Expense(
+            user_id=user_id,
+            amount=amount,
+            category=category,
+            description=str(description).strip() if description else None,
+            timestamp=timestamp
+        )
+        expenses.append(expense_obj)
+
+    logger.info(f"LLM parsed {len(expenses)} expenses from input.")
+    return expenses
+
+async def parse_expense_image_data(image_bytes: bytearray, user_id: int) -> list[Expense]:
+    """Parses potentially multiple expenses from an image using an LLM. Returns a list of Expense objects."""
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY":
         logger.error("OpenRouter API Key not configured.")
-        return None
+        return []
 
     try:
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
         base64_string = f"data:image/jpeg;base64,{base64_image}"
 
-        prompt = """
-        Analyze the attached image, which likely represents income (e.g., receipt, invoice, payment confirmation). Extract the total numerical amount received and a brief source or description for this income.
-        Return the result ONLY as a JSON object with the keys "amount" and "source".
-        - "amount" should be the total income figure (float or integer).
-        - "source" should be a short string identifying the origin or reason for the income (e.g., 'Salary', 'Client X Payment', 'Refund').
-        - If you cannot reliably extract these details, return a JSON object with null values, like {"amount": null, "source": null}.
+        prompt = f"""
+        Analyze the attached image, which may contain multiple expense entries (e.g., a photo of a receipt). Extract each expense with the following details:
+        - "amount": number (float or integer)
+        - "category": a relevant category word or phrase
+        - "description": optional brief description or null
+        - "date": optional date string in ISO format (YYYY-MM-DD), or null if not specified
+
+        Return ONLY a JSON array of objects, each with keys: "amount", "category", "description", "date".
+        Valid categories include: {', '.join(EXPENSE_CATEGORIES)}.
+        If the category is not recognized, use "Other".
+        If you cannot extract any expenses, return an empty JSON array [].
 
         JSON Output:
         """
@@ -139,7 +170,7 @@ async def parse_income_data(image_bytes: bytearray, user_id: int) -> dict | None
                     ]
                 }
             ],
-            "max_tokens": 300,
+            "max_tokens": 1000,
             "temperature": 0.1
         }
 
@@ -154,19 +185,19 @@ async def parse_income_data(image_bytes: bytearray, user_id: int) -> dict | None
 
     except httpx.RequestError as e:
         logger.error(f"HTTP request failed for image: {e}", exc_info=True)
-        return None
+        return []
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error response for image: {e}", exc_info=True)
-        return None
+        return []
     except Exception as e:
         logger.error(f"Unexpected error during LLM image request: {e}", exc_info=True)
-        return None
+        return []
 
     llm_response_content = api_result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
     if not llm_response_content:
         logger.error(f"LLM returned empty content for image from user {user_id}")
-        return None
+        return []
 
     try:
         content = llm_response_content.strip()
@@ -178,22 +209,47 @@ async def parse_income_data(image_bytes: bytearray, user_id: int) -> dict | None
         parsed_json = json.loads(content)
     except json.JSONDecodeError:
         logger.error(f"Failed to decode JSON from LLM image response: {llm_response_content}")
-        return None
+        return []
 
-    amount = parsed_json.get("amount")
-    source = parsed_json.get("source")
+    if not isinstance(parsed_json, list):
+        logger.warning(f"Expected a list of expenses from image but got: {parsed_json}")
+        return []
 
-    if amount is None or source is None:
-        logger.warning(f"LLM image parsing incomplete. Response: {parsed_json}")
-        return None
-    try:
-        amount = float(amount)
-    except (ValueError, TypeError):
-        logger.warning(f"Invalid amount '{amount}' in LLM image response: {parsed_json}")
-        return None
-    if not isinstance(source, str) or not source.strip():
-        logger.warning(f"Invalid source '{source}' in LLM image response: {parsed_json}")
-        return None
+    expenses = []
+    import datetime
+    for item in parsed_json:
+        amount = item.get("amount")
+        category = item.get("category")
+        description = item.get("description")
+        date_str = item.get("date")
 
-    logger.info(f"LLM parsed income: Amount={amount}, Source='{source}'")
-    return {"amount": amount, "source": source.strip()}
+        try:
+            amount = float(amount)
+        except (ValueError, TypeError):
+            logger.warning(f"Skipping expense with invalid amount: {item}")
+            continue
+
+        if not isinstance(category, str) or not category.strip():
+            category = "Other"
+        else:
+            matched = next((c for c in EXPENSE_CATEGORIES if c.lower() == category.lower().strip()), None)
+            category = matched if matched else "Other"
+
+        timestamp = datetime.datetime.utcnow()
+        if date_str:
+            try:
+                timestamp = datetime.datetime.fromisoformat(date_str)
+            except (ValueError, TypeError):
+                pass
+
+        expense_obj = Expense(
+            user_id=user_id,
+            amount=amount,
+            category=category,
+            description=str(description).strip() if description else None,
+            timestamp=timestamp
+        )
+        expenses.append(expense_obj)
+
+    logger.info(f"LLM parsed {len(expenses)} expenses from image for user {user_id}.")
+    return expenses
