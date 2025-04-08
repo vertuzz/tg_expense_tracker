@@ -5,7 +5,7 @@ import gspread
 from google.oauth2 import service_account
 from gspread.exceptions import SpreadsheetNotFound, WorksheetNotFound, APIError
 
-from config import GOOGLE_SHEET_ID, GOOGLE_SHEET_NAME, GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
+from config import GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -29,6 +29,10 @@ def _get_gspread_client():
     return None
 
 def write_expenses_to_sheet(expenses: list[dict]) -> bool:
+    if not expenses:
+        logger.warning("No expenses to write to sheet")
+        return False
+
     client = _get_gspread_client()
     if not client:
         logger.error("Google Sheets client authentication failed.")
@@ -43,15 +47,24 @@ def write_expenses_to_sheet(expenses: list[dict]) -> bool:
         logger.error(f"API error when accessing spreadsheet: {e}")
         return False
 
+    # Get month and year from first expense's timestamp
+    first_expense = expenses[0]
+    timestamp = first_expense.get("timestamp")
+    if not isinstance(timestamp, datetime.datetime):
+        logger.error("First expense timestamp is not a datetime object")
+        return False
+        
+    sheet_name = timestamp.strftime('%m-%Y')  # Format: MM-YYYY
+
     try:
-        worksheet = spreadsheet.worksheet(GOOGLE_SHEET_NAME)
+        worksheet = spreadsheet.worksheet(sheet_name)
     except WorksheetNotFound:
-        logger.warning(f"Worksheet '{GOOGLE_SHEET_NAME}' not found. Attempting to create it.")
+        logger.info(f"Worksheet '{sheet_name}' not found. Creating new monthly sheet.")
         try:
-            worksheet = spreadsheet.add_worksheet(title=GOOGLE_SHEET_NAME, rows="100", cols="10")
+            worksheet = spreadsheet.add_worksheet(title=sheet_name, rows="100", cols="10")
             worksheet.append_row(HEADERS)
         except APIError as e:
-            logger.error(f"Failed to create worksheet '{GOOGLE_SHEET_NAME}': {e}")
+            logger.error(f"Failed to create worksheet '{sheet_name}': {e}")
             return False
     except APIError as e:
         logger.error(f"API error when accessing worksheet: {e}")
@@ -87,7 +100,7 @@ def write_expenses_to_sheet(expenses: list[dict]) -> bool:
     for expense in expenses:
         timestamp = expense.get("timestamp")
         if isinstance(timestamp, datetime.datetime):
-            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            timestamp_str = timestamp.strftime('%d/%m/%Y %H:%M:%S')
         else:
             timestamp_str = str(timestamp) if timestamp is not None else ""
 
@@ -102,7 +115,7 @@ def write_expenses_to_sheet(expenses: list[dict]) -> bool:
 
     try:
         worksheet.append_rows(formatted_data, value_input_option='USER_ENTERED')
-        logger.info(f"Successfully appended {len(formatted_data)} expense records to the sheet.")
+        logger.info(f"Successfully appended {len(formatted_data)} expense records to sheet '{sheet_name}'.")
         return True
     except APIError as e:
         logger.error(f"Failed to append expenses to sheet: {e}")

@@ -31,7 +31,6 @@ Set the following environment variables **or** edit `config.py` (copy from `conf
 - `YOUR_SITE_URL`: (optional) For OpenRouter headers
 - `YOUR_SITE_NAME`: (optional) For OpenRouter headers
 - `GOOGLE_SHEET_ID`: The ID of your Google Spreadsheet (found in the URL)
-- `GOOGLE_SHEET_NAME`: The name of the sheet/tab within the spreadsheet (default: "Expenses")
 - `GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH`: Path to your Google Cloud service account JSON key file
 
 ### Google Sheets API Setup
@@ -67,5 +66,4 @@ python bot.py
 
 ## Notes
 
-- The database backend is being changed from SQLite to Google Sheets for easier access and management.
-- Designed for easy extension with more models (e.g., Income).
+- Expenses are now automatically organized into monthly sheets (MM-YYYY format) in Google Sheets.
