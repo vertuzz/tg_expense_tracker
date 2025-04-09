@@ -19,6 +19,8 @@ LLM_MODEL = os.getenv("LLM_MODEL", "meta-llama/llama-4-maverick:free")
 YOUR_SITE_URL = os.getenv("YOUR_SITE_URL", "http://localhost")
 YOUR_SITE_NAME = os.getenv("YOUR_SITE_NAME", "TelegramExpenseBot")
 
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///user_data.db")
+
 # Google Sheets Configuration
 GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH = os.getenv("GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH", "creds.json")  # Path to your service account JSON key file
 
