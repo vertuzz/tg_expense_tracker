@@ -10,6 +10,8 @@ A simple Telegram bot to track personal expenses using LLM parsing.
 - **User tracking:** Automatically tracks users in SQLite database with their Telegram ID, first name, and personal Google Sheet ID.
 - **Personal spreadsheets:** Each user can set their own Google Sheet using the `/setsheet` command (accepts both Sheet ID and full URL).
 - **Daily Reminder:** Sends a notification to all users daily at 20:00 (server time) to remind them to add their expenses.
+- **Automatic Monthly Stats:** Calculates and displays Total, Limit (currently hardcoded), and Left amounts on each monthly sheet.
+- **Status Feedback:** Bot replies with the current monthly status (Total, Limit, Left) after each expense addition.
 - Modular, clean architecture following SOLID principles.
 
 ## Project Structure
@@ -21,6 +23,7 @@ src/
   handlers.py          # Telegram command and message handlers
   llm_parser.py        # LLM API interaction logic (text and image parsing)
   sheets_writer.py     # Google Sheets integration
+  sheet_stats.py       # Handles updating monthly stats in the sheet
 requirements.txt     # Python dependencies
 README.md            # Project documentation
 ```
@@ -74,5 +77,7 @@ Note: The project uses Python package structure, so make sure to run from the pr
 ## Notes
 
 - Expenses are automatically organized into monthly sheets (MM-YYYY format) in each user's Google Sheet.
+- Each monthly sheet includes a summary section with Total expenses, a Limit (currently hardcoded in `sheet_stats.py`), and the remaining amount.
+- After adding an expense (via text or photo), the bot will reply confirming the addition and showing the updated monthly Total, Limit, and Left amounts.
 - Users must set their spreadsheet using `/setsheet <spreadsheet_id_or_url>` before adding expenses (accepts both Sheet ID and full URL).
 - The LLM parser has been refactored to reduce code duplication and improve maintainability.

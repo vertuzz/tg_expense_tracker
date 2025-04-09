@@ -7,7 +7,6 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from .llm_parser import parse_expense_data, parse_expense_image_data
 from .sheets_writer import write_expenses_to_sheet
-from .llm_parser import parse_expense_data, parse_expense_image_data
 from .database import User, get_db_session
 from .config import GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
 
@@ -108,8 +107,9 @@ async def _process_text_message(update: Update, context: ContextTypes.DEFAULT_TY
             logger.error(f"No spreadsheet_id set for user {user.id}")
             return
             
-        success = write_expenses_to_sheet(expense_dicts, spreadsheet_id=user_record.spreadsheet_id)
-        if not success:
+        # Try writing expenses and get stats
+        stats = write_expenses_to_sheet(expense_dicts, spreadsheet_id=user_record.spreadsheet_id)
+        if stats is None:
             await message.reply_text("❌ Error: Could not save expenses to Google Sheet. Please check configuration and sheet access.")
             return
     finally:
@@ -119,7 +119,11 @@ async def _process_text_message(update: Update, context: ContextTypes.DEFAULT_TY
         f"• {e['amount']:.2f} in '{e['category']}'" + (f" ({e['description']})" if e.get('description') else "")
         for e in expense_dicts
     )
-    await message.reply_text(f"✅ Added {len(expense_dicts)} expense(s) to Google Sheet:\n{details}")
+    
+    # Prepare stats message
+    stats_message = f"\n\n📊 Monthly Status:\n  Total: {stats.get('total', 'N/A')}\n  Limit: {stats.get('limit', 'N/A')}\n  Left:  {stats.get('left', 'N/A')}"
+
+    await message.reply_text(f"✅ Added {len(expense_dicts)} expense(s) to Google Sheet:\n{details}{stats_message}")
 
 async def _process_photo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Processes photo messages containing receipt images."""
@@ -148,8 +152,9 @@ async def _process_photo_message(update: Update, context: ContextTypes.DEFAULT_T
                 logger.error(f"No spreadsheet_id set for user {user.id}")
                 return
                 
-            success = write_expenses_to_sheet(expense_dicts, spreadsheet_id=user_record.spreadsheet_id)
-            if not success:
+            # Try writing expenses and get stats
+            stats = write_expenses_to_sheet(expense_dicts, spreadsheet_id=user_record.spreadsheet_id)
+            if stats is None:
                 await message.reply_text("❌ Error: Could not save expenses to Google Sheet. Please check configuration and sheet access.")
                 return
         finally:
@@ -159,7 +164,11 @@ async def _process_photo_message(update: Update, context: ContextTypes.DEFAULT_T
             f"• {e['amount']:.2f} in '{e['category']}'" + (f" ({e['description']})" if e.get('description') else "")
             for e in expense_dicts
         )
-        await message.reply_text(f"✅ Added {len(expense_dicts)} expense(s) from the image to Google Sheet:\n{details}")
+        
+        # Prepare stats message
+        stats_message = f"\n\n📊 Monthly Status:\n  Total: {stats.get('total', 'N/A')}\n  Limit: {stats.get('limit', 'N/A')}\n  Left:  {stats.get('left', 'N/A')}"
+
+        await message.reply_text(f"✅ Added {len(expense_dicts)} expense(s) from the image to Google Sheet:\n{details}{stats_message}")
     except Exception as e:
         logger.error(f"Error processing photo message: {e}", exc_info=True)
         await message.reply_text("❌ An error occurred while processing the image.")
