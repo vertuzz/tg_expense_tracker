@@ -7,6 +7,8 @@ A simple Telegram bot to track personal expenses using LLM parsing.
 - Add expenses via text messages, parsed with an LLM (OpenRouter API).
 - **Supports parsing multiple expenses from a single message.** The bot uses an LLM to extract multiple expenses from one text input, returning a list of expenses with amount, category (mapped to predefined categories), optional description, and optional date.
 - **DRY implementation:** The LLM parser follows the Don't Repeat Yourself principle with shared helper functions for common operations like API requests, response parsing, and expense validation.
+- **User tracking:** Automatically tracks users in SQLite database with their Telegram ID, first name, and personal Google Sheet ID.
+- **Personal spreadsheets:** Each user can set their own Google Sheet using the `/setsheet` command (accepts both Sheet ID and full URL).
 - Modular, clean architecture following SOLID principles.
 
 ## Project Structure
@@ -32,7 +34,6 @@ Set the following environment variables **or** edit `config.py` (copy from `conf
 - `LLM_MODEL`: (optional) Defaults to `openai/gpt-4o`
 - `YOUR_SITE_URL`: (optional) For OpenRouter headers
 - `YOUR_SITE_NAME`: (optional) For OpenRouter headers
-- `GOOGLE_SHEET_ID`: The ID of your Google Spreadsheet (found in the URL)
 - `GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH`: Path to your Google Cloud service account JSON key file
 
 ### Google Sheets API Setup
@@ -45,7 +46,8 @@ Set the following environment variables **or** edit `config.py` (copy from `conf
 6. Grant it the "Editor" role (or customize permissions).
 7. After creating, go to the service account, then **Keys > Add Key > Create new key**, select **JSON**, and download the file.
 8. Save this JSON file securely and set the `GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH` to its path.
-9. Copy the **service account email** and share your Google Sheet with this email (Viewer or Editor access).
+9. Copy the **service account email** and share each user's Google Sheet with this email (Viewer or Editor access).
+10. Users must set their spreadsheet ID using the `/setsheet` command after starting the bot.
 
 
 ## Setup
@@ -70,5 +72,6 @@ Note: The project uses Python package structure, so make sure to run from the pr
 
 ## Notes
 
-- Expenses are now automatically organized into monthly sheets (MM-YYYY format) in Google Sheets.
+- Expenses are automatically organized into monthly sheets (MM-YYYY format) in each user's Google Sheet.
+- Users must set their spreadsheet using `/setsheet <spreadsheet_id_or_url>` before adding expenses (accepts both Sheet ID and full URL).
 - The LLM parser has been refactored to reduce code duplication and improve maintainability.

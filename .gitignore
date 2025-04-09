@@ -3,3 +3,4 @@ __pycache__
 *.pyc
 
 creds.json
+user_data.db

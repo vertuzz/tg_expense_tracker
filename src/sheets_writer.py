@@ -5,7 +5,7 @@ import gspread
 from google.oauth2 import service_account
 from gspread.exceptions import SpreadsheetNotFound, WorksheetNotFound, APIError
 
-from .config import GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
+from .config import GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ def _get_gspread_client():
         logger.error(f"Failed to authenticate with Google Sheets API: {e}")
     return None
 
-def write_expenses_to_sheet(expenses: list[dict]) -> bool:
+def write_expenses_to_sheet(expenses: list[dict], spreadsheet_id: str) -> bool:
     if not expenses:
         logger.warning("No expenses to write to sheet")
         return False
@@ -39,9 +39,9 @@ def write_expenses_to_sheet(expenses: list[dict]) -> bool:
         return False
 
     try:
-        spreadsheet = client.open_by_key(GOOGLE_SHEET_ID)
+        spreadsheet = client.open_by_key(spreadsheet_id)
     except SpreadsheetNotFound:
-        logger.error(f"Spreadsheet with ID '{GOOGLE_SHEET_ID}' not found.")
+        logger.error(f"Spreadsheet with ID '{spreadsheet_id}' not found.")
         return False
     except APIError as e:
         logger.error(f"API error when accessing spreadsheet: {e}")

@@ -20,7 +20,6 @@ YOUR_SITE_URL = os.getenv("YOUR_SITE_URL", "http://localhost")
 YOUR_SITE_NAME = os.getenv("YOUR_SITE_NAME", "TelegramExpenseBot")
 
 # Google Sheets Configuration
-GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "YOUR_GOOGLE_SHEET_ID")  # The ID of your Google Sheet
 GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH = os.getenv("GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH", "creds.json")  # Path to your service account JSON key file
 
 # Expense Categories
