@@ -1,7 +1,7 @@
 import logging
 import re
 import json
-import os
+import telegram
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
@@ -13,8 +13,25 @@ from .config import GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH
 
 logger = logging.getLogger(__name__)
 
+
+async def _ensure_user_exists(user: telegram.User) -> None:
+    session = get_db_session()
+    try:
+        existing_user = session.query(User).filter(User.id == user.id).first()
+        if not existing_user:
+            new_user = User(id=user.id, first_name=user.first_name)
+            session.add(new_user)
+            session.commit()
+            logger.info(f"Added new user: {user.id} ({user.first_name})")
+    finally:
+        session.close()
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends explanation on how to use the bot."""
+    # Handle user creation
+    user = update.effective_user
+    await _ensure_user_exists(user)
+
     # Try to get service account email from credentials
     try:
         with open(GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PATH, 'r') as f:
@@ -153,16 +170,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user = message.from_user
     
     # Check if user exists in database, create if not
-    session = get_db_session()
-    try:
-        existing_user = session.query(User).filter(User.id == user.id).first()
-        if not existing_user:
-            new_user = User(id=user.id, first_name=user.first_name)
-            session.add(new_user)
-            session.commit()
-            logger.info(f"Added new user to DB: {user.id} ({user.first_name})")
-    finally:
-        session.close()
+    await _ensure_user_exists(user)
 
     logger.info(f"Received message from {user.first_name}")
 
