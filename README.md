@@ -9,6 +9,7 @@ A simple Telegram bot to track personal expenses using LLM parsing.
 - **DRY implementation:** The LLM parser follows the Don't Repeat Yourself principle with shared helper functions for common operations like API requests, response parsing, and expense validation.
 - **User tracking:** Automatically tracks users in SQLite database with their Telegram ID, first name, and personal Google Sheet ID.
 - **Personal spreadsheets:** Each user can set their own Google Sheet using the `/setsheet` command (accepts both Sheet ID and full URL).
+- **Daily Reminder:** Sends a notification to all users daily at 20:00 (server time) to remind them to add their expenses.
 - Modular, clean architecture following SOLID principles.
 
 ## Project Structure
